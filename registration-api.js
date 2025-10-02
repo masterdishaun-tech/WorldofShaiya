@@ -52,6 +52,13 @@ app.post('/api/post-registration', async (req, res) => {
   try {
     const { supabaseUserId, username, email, password } = req.body;
 
+    console.log('🔍 Received registration request:', { 
+      supabaseUserId, 
+      username, 
+      email, 
+      passwordLength: password?.length 
+    });
+
     if (!supabaseUserId || !username || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -59,10 +66,22 @@ app.post('/api/post-registration', async (req, res) => {
       });
     }
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(supabaseUserId)) {
+      console.error('❌ Invalid UUID format:', supabaseUserId);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user ID format',
+      });
+    }
+
     console.log(`📝 Post-registration for: ${username}`);
 
     // Connect to SQL Server
+    console.log('🔌 Connecting to SQL Server...');
     const pool = await sql.connect(sqlConfig);
+    console.log('✅ Connected to SQL Server');
 
     // Check if user already exists in PS_GameWeb.users
     const existingUser = await pool
@@ -93,41 +112,51 @@ app.post('/api/post-registration', async (req, res) => {
         VALUES (@username, @email, @password_hash, @supabase_uid, @web_access_level, GETDATE())
       `);
 
-    // Get the newly created user_id
+    // Get the newly created user_id (trigger will handle user_points and Users_Master)
     const newUser = await pool
       .request()
       .input('supabase_uid', sql.UniqueIdentifier, supabaseUserId)
-      .query('SELECT user_id FROM PS_GameWeb.dbo.users WHERE supabase_uid = @supabase_uid');
+      .query('SELECT user_id, game_user_uid FROM PS_GameWeb.dbo.users WHERE supabase_uid = @supabase_uid');
 
     const userId = newUser.recordset[0].user_id;
-
-    // Initialize user_points
-    await pool
-      .request()
-      .input('user_id', sql.Int, userId)
-      .query(`
-        INSERT INTO PS_GameWeb.dbo.user_points (user_id, vote_points, donation_points, updated_at)
-        VALUES (@user_id, 0, 0, GETDATE())
-      `);
+    const gameUserUid = newUser.recordset[0].game_user_uid;
 
     await pool.close();
 
-    console.log(`✅ User created in PS_GameWeb: ${username} (user_id: ${userId})`);
+    console.log(`✅ User created in PS_GameWeb: ${username} (user_id: ${userId}, game_user_uid: ${gameUserUid})`);
+    console.log(`✅ Trigger automatically created user_points and Users_Master entries`);
 
     return res.json({
       success: true,
       message: 'User created successfully',
       userId: userId,
+      gameUserUid: gameUserUid,
     });
 
   } catch (error) {
     console.error('❌ Registration error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      number: error.number,
+      state: error.state,
+      class: error.class,
+      stack: error.stack
+    });
     
     // Handle duplicate username
     if (error.number === 2627 || error.number === 2601) {
       return res.status(409).json({
         success: false,
         error: 'Username already exists',
+      });
+    }
+
+    // Handle SQL connection errors
+    if (error.code === 'ESOCKET' || error.code === 'ETIMEOUT') {
+      return res.status(503).json({
+        success: false,
+        error: 'Database connection failed',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
 

@@ -6,6 +6,7 @@
   "scripts": {
     "start:registration": "node registration-api.js",
     "start:game-login": "node game-login-server.js",
+    "start:server-status": "node server-status-api.js",
     "dev:registration": "nodemon registration-api.js",
     "dev:game-login": "nodemon game-login-server.js",
     "test:registration": "node -e \"console.log('Testing registration API...'); require('http').get('http://localhost:30901/api/health', (res) => { console.log('Status:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', (e) => { console.error(e.message); process.exit(1); })\"",
