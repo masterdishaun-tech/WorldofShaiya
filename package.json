@@ -1,0 +1,36 @@
+{
+  "name": "shaiya-api-servers",
+  "version": "1.0.0",
+  "description": "Authentication API servers for Shaiya game integration",
+  "main": "registration-api.js",
+  "scripts": {
+    "start:registration": "node registration-api.js",
+    "start:game-login": "node game-login-server.js",
+    "dev:registration": "nodemon registration-api.js",
+    "dev:game-login": "nodemon game-login-server.js",
+    "test:registration": "node -e \"console.log('Testing registration API...'); require('http').get('http://localhost:30901/api/health', (res) => { console.log('Status:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', (e) => { console.error(e.message); process.exit(1); })\"",
+    "test:game-login": "node -e \"console.log('Testing game login API...'); require('http').get('http://localhost:30900/health', (res) => { console.log('Status:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', (e) => { console.error(e.message); process.exit(1); })\""
+  },
+  "keywords": [
+    "shaiya",
+    "game-server",
+    "authentication",
+    "api",
+    "mssql"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "mssql": "^11.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
